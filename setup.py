@@ -21,5 +21,5 @@ setup(
     ],
     keywords='unittest colour color output',
     packages=find_packages(),
-    install_requires=['blessings', 'pygments'],
+    install_requires=['blessings'],
 )

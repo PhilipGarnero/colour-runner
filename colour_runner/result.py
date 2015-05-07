@@ -2,15 +2,12 @@ from unittest import result
 from unittest.util import strclass
 
 from blessings import Terminal
-from pygments import formatters, highlight
 try:
     # Python 2
     text_type = unicode
-    from pygments.lexers import PythonTracebackLexer as Lexer
 except NameError:
     # Python 3
     text_type = str
-    from pygments.lexers import Python3TracebackLexer as Lexer
 
 
 class ColourTextTestResult(result.TestResult):
@@ -19,32 +16,51 @@ class ColourTextTestResult(result.TestResult):
 
     Based on https://github.com/python/cpython/blob/3.3/Lib/unittest/runner.py
     """
-    formatter = formatters.Terminal256Formatter()
-    lexer = Lexer()
     separator1 = '=' * 70
     separator2 = '-' * 70
     indent = ' ' * 4
 
     _terminal = Terminal()
-    colours = {
-        None: text_type,
-        'error': _terminal.bold_red,
-        'expected': _terminal.blue,
-        'fail': _terminal.bold_yellow,
-        'skip': text_type,
-        'success': _terminal.green,
-        'title': _terminal.blue,
-        'unexpected': _terminal.bold_red,
+
+    colour_defaults = {
+        "default": "white",
+        "error": "red",
+        "success": "green",
+        "fail": "yellow",
+        "skip": "yellow",
+        "expected": "green",
+        "unexpected": "red",
+        "test_title": "blue",
+        "test_name": "white"
     }
 
     _test_class = None
 
     def __init__(self, stream, descriptions, verbosity):
-        super(ColourTextTestResult, self).__init__(stream, descriptions, verbosity)
+        super(ColourTextTestResult, self).__init__(stream, descriptions,
+                                                   verbosity)
         self.stream = stream
         self.showAll = verbosity > 1
         self.dots = verbosity == 1
         self.descriptions = descriptions
+
+        self.colours = {
+            None: self.fetchColour(self.colour_defaults["default"]),
+            'error': self.fetchColour("bold", self.colour_defaults["error"]),
+            'expected': self.fetchColour("italic",
+                                         self.colour_defaults["expected"]),
+            'fail': self.fetchColour("bold", self.colour_defaults["fail"]),
+            'skip': self.fetchColour("italic", self.colour_defaults["skip"]),
+            'success': self.fetchColour(self.colour_defaults["success"]),
+            'test_title': self.fetchColour("underline", "bold",
+                                           self.colour_defaults["test_title"]),
+            'test_name': self.fetchColour(self.colour_defaults["test_name"]),
+            'unexpected': self.fetchColour("italic",
+                                           self.colour_defaults["unexpected"]),
+        }
+
+    def fetchColour(self, *args):
+        return getattr(self._terminal, "_".join(args), text_type)
 
     def getShortDescription(self, test):
         doc_first_line = test.shortDescription()
@@ -71,8 +87,10 @@ class ColourTextTestResult(result.TestResult):
             if self._test_class != test.__class__:
                 self._test_class = test.__class__
                 title = self.getClassDescription(test)
-                self.stream.writeln(self.colours['title'](title))
-            self.stream.write(self.getShortDescription(test))
+                self.stream.writeln(self.colours['test_title'](title))
+            self.stream.write(self.colours['test_name'](
+                self.getShortDescription(test))
+            )
             self.stream.write(' ... ')
             self.stream.flush()
 
@@ -122,4 +140,4 @@ class ColourTextTestResult(result.TestResult):
             title = '%s: %s' % (flavour, self.getLongDescription(test))
             self.stream.writeln(colour(title))
             self.stream.writeln(self.separator2)
-            self.stream.writeln(highlight(err, self.lexer, self.formatter))
+            self.stream.writeln(colour(err))
